@@ -1,0 +1,25 @@
+[package]
+name = "natter-rust-axum"
+version = "0.1.0"
+edition = "2021"
+publish = false
+authors = [
+    "Ken C.Y. Leung"
+]
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+axum = { version = "0.5", features = ["headers"] }
+tokio = { version = "1", features = ["full"] }
+tracing = "0.1"
+tracing-subscriber = { version = "0.3", features = ["env-filter"] }
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+tower = { version = "0.4", features = ["full"] }
+tower-http = { version = "0.3", features = ["trace"] }
+sqlx = { version = "0.6", features = ["runtime-tokio-native-tls", "postgres"] }
+clap = { version = "3", features = ["derive", "env"] }
+dotenv = "0.15"
+anyhow = "1"
+thiserror = "1"
