@@ -3,12 +3,16 @@ use axum::{
     http::StatusCode,
     response::IntoResponse,
     routing::{get, post},
-    Json, Router,
+    Extension, Json, Router,
 };
 use clap::Parser;
 use serde::{Deserialize, Serialize};
 use sqlx::postgres::PgPoolOptions;
 use std::net::SocketAddr;
+use tower::ServiceBuilder;
+use tower_http::trace::TraceLayer;
+
+mod routes;
 
 #[derive(clap::Parser)]
 struct Config {
@@ -31,9 +35,13 @@ async fn main() -> anyhow::Result<()> {
 
     sqlx::migrate!().run(&db).await?;
 
-    let app = Router::new();
+    let app = routes::space::router().layer(
+        ServiceBuilder::new()
+            .layer(TraceLayer::new_for_http())
+            .layer(Extension(routes::ApiContext { db })),
+    );
 
-    let addr = SocketAddr::from(([127, 0, 0, 1], 3000));
+    let addr = SocketAddr::from(([127, 0, 0, 1], 8000));
     tracing::debug!("listening on {}", addr);
     axum::Server::bind(&addr)
         .serve(app.into_make_service())
