@@ -1,17 +1,12 @@
 use anyhow::Context;
-use axum::{
-    http::StatusCode,
-    response::IntoResponse,
-    routing::{get, post},
-    Extension, Json, Router,
-};
+use axum::Extension;
 use clap::Parser;
-use serde::{Deserialize, Serialize};
 use sqlx::postgres::PgPoolOptions;
 use std::net::SocketAddr;
 use tower::ServiceBuilder;
 use tower_http::trace::TraceLayer;
 
+pub mod errors;
 mod routes;
 
 #[derive(clap::Parser)]
