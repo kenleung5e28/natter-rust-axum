@@ -28,7 +28,7 @@ struct CreateSpaceBody {
 async fn create_space(
     ctx: Extension<ApiContext>,
     Json(req): Json<CreateSpacePayload>,
-) -> Result<Json<CreateSpaceBody>, ApiError> {
+) -> Result<(StatusCode, Json<CreateSpaceBody>), ApiError> {
     let name = req.name;
     let owner = req.owner;
     let result = query!(
@@ -38,8 +38,11 @@ async fn create_space(
     )
     .fetch_one(&ctx.db)
     .await?;
-    Ok(Json(CreateSpaceBody {
-        name,
-        uri: format!("/spaces/{}", result.space_id),
-    }))
+    Ok((
+        StatusCode::CREATED,
+        Json(CreateSpaceBody {
+            name,
+            uri: format!("/spaces/{}", result.space_id),
+        }),
+    ))
 }
