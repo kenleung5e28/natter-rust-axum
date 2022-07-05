@@ -1,5 +1,5 @@
 use anyhow::Context;
-use axum::Extension;
+use axum::{Extension, Router};
 use clap::Parser;
 use sqlx::postgres::PgPoolOptions;
 use std::net::SocketAddr;
@@ -12,7 +12,7 @@ mod routes;
 #[derive(clap::Parser)]
 struct Config {
     #[clap(long, env)]
-    connection_string: String,
+    database_url: String,
 }
 
 #[tokio::main]
@@ -24,17 +24,19 @@ async fn main() -> anyhow::Result<()> {
 
     let db = PgPoolOptions::new()
         .max_connections(100)
-        .connect(&config.connection_string)
+        .connect(&config.database_url)
         .await
         .context("unable to connect to database")?;
 
     sqlx::migrate!().run(&db).await?;
 
-    let app = routes::space::router().layer(
-        ServiceBuilder::new()
-            .layer(TraceLayer::new_for_http())
-            .layer(Extension(routes::ApiContext { db })),
-    );
+    let app = Router::new()
+        .nest("/spaces", routes::space::router())
+        .layer(
+            ServiceBuilder::new()
+                .layer(TraceLayer::new_for_http())
+                .layer(Extension(routes::ApiContext { db })),
+        );
 
     let addr = SocketAddr::from(([127, 0, 0, 1], 8000));
     tracing::debug!("listening on {}", addr);

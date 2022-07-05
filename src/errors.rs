@@ -11,8 +11,10 @@ pub enum ApiError {
     NotFound,
     #[error("bad request")]
     BadRequest,
-    #[error("an internal server error occurred")]
-    Internal(#[from] anyhow::Error),
+    #[error(transparent)]
+    ServerError(#[from] anyhow::Error),
+    #[error("a database error has occurred")]
+    DatabaseError(#[from] sqlx::Error),
 }
 
 impl IntoResponse for ApiError {
@@ -20,7 +22,9 @@ impl IntoResponse for ApiError {
         let status_code = match &self {
             ApiError::NotFound => StatusCode::NOT_FOUND,
             ApiError::BadRequest => StatusCode::BAD_REQUEST,
-            ApiError::Internal(_) => StatusCode::INTERNAL_SERVER_ERROR,
+            ApiError::ServerError(_) | ApiError::DatabaseError(_) => {
+                StatusCode::INTERNAL_SERVER_ERROR
+            }
         };
         (
             status_code,
