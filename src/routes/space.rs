@@ -1,5 +1,4 @@
-use crate::errors::ApiError;
-use crate::routes::ApiContext;
+use crate::routes::{ApiContext, ApiResult};
 use axum::{
     http::StatusCode,
     response::IntoResponse,
@@ -28,7 +27,7 @@ struct CreateSpaceBody {
 async fn create_space(
     ctx: Extension<ApiContext>,
     Json(req): Json<CreateSpacePayload>,
-) -> Result<(StatusCode, Json<CreateSpaceBody>), ApiError> {
+) -> ApiResult<Json<CreateSpaceBody>> {
     let name = req.name;
     let owner = req.owner;
     let result = query!(
