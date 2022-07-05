@@ -1,5 +1,6 @@
 use crate::routes::{ApiContext, ApiResult};
 use axum::{
+    extract::MatchedPath,
     http::StatusCode,
     response::IntoResponse,
     routing::{get, post},
@@ -26,6 +27,7 @@ struct CreateSpaceBody {
 
 async fn create_space(
     ctx: Extension<ApiContext>,
+    path: MatchedPath,
     Json(req): Json<CreateSpacePayload>,
 ) -> ApiResult<Json<CreateSpaceBody>> {
     let name = req.name;
@@ -41,7 +43,7 @@ async fn create_space(
         StatusCode::CREATED,
         Json(CreateSpaceBody {
             name,
-            uri: format!("/spaces/{}", result.space_id),
+            uri: format!("{}/{}", path.as_str(), result.space_id),
         }),
     ))
 }
