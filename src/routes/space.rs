@@ -7,7 +7,7 @@ use axum::{
     Extension, Json, Router,
 };
 use serde::{Deserialize, Serialize};
-use sqlx::query;
+use sqlx::{query, query_scalar};
 
 pub fn router() -> Router {
     Router::new().route("/", post(create_space))
@@ -32,7 +32,7 @@ async fn create_space(
 ) -> ApiResult<Json<CreateSpaceBody>> {
     let name = req.name;
     let owner = req.owner;
-    let result = query!(
+    let space_id = query_scalar!(
         "INSERT INTO spaces (name, owner) VALUES ($1, $2) RETURNING space_id",
         name,
         owner
@@ -43,7 +43,7 @@ async fn create_space(
         StatusCode::CREATED,
         Json(CreateSpaceBody {
             name,
-            uri: format!("{}/{}", path.as_str(), result.space_id),
+            uri: format!("{}/{}", path.as_str(), space_id),
         }),
     ))
 }
