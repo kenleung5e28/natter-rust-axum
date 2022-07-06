@@ -1,9 +1,9 @@
-use crate::routes::{ApiContext, ApiResult};
+use crate::api::{ApiContext, ApiResult, Json};
 use axum::{
     extract::{MatchedPath, Path},
     http::StatusCode,
     routing::{get, post},
-    Extension, Json, Router,
+    Extension, Router,
 };
 use serde::{Deserialize, Serialize};
 use sqlx::{query, query_scalar};

@@ -6,7 +6,7 @@ use std::net::SocketAddr;
 use tower::ServiceBuilder;
 use tower_http::trace::TraceLayer;
 
-pub mod errors;
+mod api;
 mod routes;
 
 #[derive(clap::Parser)]
@@ -35,7 +35,7 @@ async fn main() -> anyhow::Result<()> {
         .layer(
             ServiceBuilder::new()
                 .layer(TraceLayer::new_for_http())
-                .layer(Extension(routes::ApiContext { db })),
+                .layer(Extension(api::ApiContext { db })),
         );
 
     let addr = SocketAddr::from(([127, 0, 0, 1], 8000));
