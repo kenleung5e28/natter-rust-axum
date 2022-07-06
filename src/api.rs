@@ -23,9 +23,17 @@ where
             Ok(value) => Ok(Self(value.0)),
             Err(rejection) => {
                 let e = match rejection {
-                    JsonRejection::JsonDataError(_) | JsonRejection::MissingJsonContentType(_) => {
-                        ApiError::BadRequest
-                    }
+                    JsonRejection::MissingJsonContentType(_) => ApiError::BadRequest(
+                        "request missing the application/json content-type".to_string(),
+                    ),
+                    JsonRejection::JsonSyntaxError(err) => ApiError::BadRequest(format!(
+                        "JSON payload has syntax error: {}",
+                        err.to_string()
+                    )),
+                    JsonRejection::JsonDataError(err) => ApiError::BadRequest(format!(
+                        "invalid request JSON payload: {}",
+                        err.to_string()
+                    )),
                     err => ApiError::ServerError(anyhow!(
                         "unknown error when parsing JSON payload: {}",
                         err
@@ -57,11 +65,11 @@ pub struct ApiContext {
 pub enum ApiError {
     #[error("resource not found: {0}")]
     NotFound(String),
-    #[error("bad request")]
-    BadRequest,
-    #[error("server error has occurred")]
+    #[error("bad request: {0}")]
+    BadRequest(String),
+    #[error("server error: {0}")]
     ServerError(#[from] anyhow::Error),
-    #[error("database error has occurred")]
+    #[error("database error: {0}")]
     DatabaseError(#[from] sqlx::Error),
 }
 
@@ -69,7 +77,7 @@ impl IntoResponse for ApiError {
     fn into_response(self) -> Response {
         let status_code = match &self {
             ApiError::NotFound(_) => StatusCode::NOT_FOUND,
-            ApiError::BadRequest => StatusCode::BAD_REQUEST,
+            ApiError::BadRequest(_) => StatusCode::BAD_REQUEST,
             ApiError::ServerError(_) | ApiError::DatabaseError(_) => {
                 StatusCode::INTERNAL_SERVER_ERROR
             }
