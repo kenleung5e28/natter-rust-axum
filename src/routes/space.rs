@@ -97,16 +97,21 @@ struct ReadMessageBody {
 
 async fn read_message(
     ctx: Extension<ApiContext>,
+    Path(space_id): Path<i32>,
+    Path(msg_id): Path<i32>,
     path: MatchedPath,
-    Path((space_id, msg_id)): Path<(i32, i32)>,
-) -> Result<Option<Json<ReadMessageBody>>, ApiError> {
+) -> Result<Json<ReadMessageBody>, ApiError> {
     let result = query!("SELECT space_id, msg_id, author, msg_time, msg_text FROM messages WHERE space_id = $1 AND msg_id = $2", space_id, msg_id).fetch_optional(&ctx.db).await?;
-    Ok(result.map(|record| {
-        Json(ReadMessageBody {
+    match result {
+        Some(record) => Ok(Json(ReadMessageBody {
             author: record.author,
             message: record.msg_text,
             time: record.msg_time.to_string(),
             uri: format!("{}", path.as_str()),
-        })
-    }))
+        })),
+        None => Err(ApiError::NotFound(format!(
+            "message with ID {} not found in space with ID {}",
+            space_id, msg_id
+        ))),
+    }
 }
