@@ -54,8 +54,6 @@ where
     }
 }
 
-pub type ApiResult<T> = Result<(StatusCode, T), ApiError>;
-
 #[derive(Clone)]
 pub struct ApiContext {
     pub db: PgPool,

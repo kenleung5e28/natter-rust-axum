@@ -1,4 +1,4 @@
-use crate::api::{ApiContext, ApiResult, Json};
+use crate::api::{ApiContext, ApiError, Json};
 use axum::{
     extract::{MatchedPath, Path},
     http::StatusCode,
@@ -11,7 +11,9 @@ use sqlx::{query, query_scalar};
 pub fn router() -> Router {
     Router::new().route("/", post(create_space)).nest(
         "/:space_id/messages",
-        Router::new().route("/", post(post_message)),
+        Router::new()
+            .route("/", post(post_message))
+            .route("/:msg_id", get(read_message)),
     )
 }
 
@@ -31,7 +33,7 @@ async fn create_space(
     ctx: Extension<ApiContext>,
     path: MatchedPath,
     Json(payload): Json<CreateSpacePayload>,
-) -> ApiResult<Json<CreateSpaceBody>> {
+) -> Result<(StatusCode, Json<CreateSpaceBody>), ApiError> {
     let name = payload.name;
     let owner = payload.owner;
     let space_id = query_scalar!(
@@ -66,13 +68,11 @@ async fn post_message(
     Path(space_id): Path<i32>,
     path: MatchedPath,
     Json(payload): Json<PostMessagePayload>,
-) -> ApiResult<Json<PostMessageBody>> {
+) -> Result<(StatusCode, Json<PostMessageBody>), ApiError> {
     let author = payload.author;
     let message = payload.message;
     let msg_id = query_scalar!(
-        r#"
-        INSERT INTO messages (space_id, author, msg_text) VALUES ($1, $2, $3) RETURNING msg_id
-    "#,
+        "INSERT INTO messages (space_id, author, msg_text) VALUES ($1, $2, $3) RETURNING msg_id",
         space_id,
         author,
         message
@@ -85,4 +85,28 @@ async fn post_message(
             uri: format!("{}/{}", path.as_str(), msg_id),
         }),
     ))
+}
+
+#[derive(Serialize)]
+struct ReadMessageBody {
+    author: String,
+    message: String,
+    time: String,
+    uri: String,
+}
+
+async fn read_message(
+    ctx: Extension<ApiContext>,
+    path: MatchedPath,
+    Path((space_id, msg_id)): Path<(i32, i32)>,
+) -> Result<Option<Json<ReadMessageBody>>, ApiError> {
+    let result = query!("SELECT space_id, msg_id, author, msg_time, msg_text FROM messages WHERE space_id = $1 AND msg_id = $2", space_id, msg_id).fetch_optional(&ctx.db).await?;
+    Ok(result.map(|record| {
+        Json(ReadMessageBody {
+            author: record.author,
+            message: record.msg_text,
+            time: record.msg_time.to_string(),
+            uri: format!("{}", path.as_str()),
+        })
+    }))
 }

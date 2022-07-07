@@ -18,7 +18,7 @@ serde = { version = "1", features = ["derive"] }
 serde_json = "1"
 tower = { version = "0.4", features = ["full"] }
 tower-http = { version = "0.3", features = ["trace"] }
-sqlx = { version = "0.6", features = ["runtime-tokio-native-tls", "postgres"] }
+sqlx = { version = "0.6", features = ["runtime-tokio-native-tls", "postgres", "time"] }
 clap = { version = "3", features = ["derive", "env"] }
 dotenv = "0.15"
 anyhow = "1"
