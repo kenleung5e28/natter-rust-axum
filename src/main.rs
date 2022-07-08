@@ -28,8 +28,6 @@ async fn main() -> anyhow::Result<()> {
         .await
         .context("unable to connect to database")?;
 
-    sqlx::migrate!().run(&db).await?;
-
     let app = Router::new()
         .nest("/spaces", routes::space::router())
         .layer(
