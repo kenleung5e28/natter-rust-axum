@@ -7,7 +7,7 @@ use axum::{
 };
 use serde::{Deserialize, Serialize};
 use sqlx::{query, query_scalar};
-use time::{Duration, OffsetDateTime};
+use chrono::{DateTime, Duration, Utc};
 
 pub fn router() -> Router {
     Router::new().route("/", post(create_space)).nest(
@@ -92,7 +92,7 @@ async fn post_message(
 struct ReadMessageBody {
     author: String,
     message: String,
-    time: String,
+    time: DateTime<Utc>,
     uri: String,
 }
 
@@ -112,7 +112,7 @@ async fn read_message(
         Some(record) => Ok(Json(ReadMessageBody {
             author: record.author,
             message: record.msg_text,
-            time: record.msg_time.to_string(),
+            time: record.msg_time,
             uri: format!("{}", uri.0),
         })),
         None => Err(ApiError::NotFound(format!(
@@ -124,7 +124,7 @@ async fn read_message(
 
 #[derive(Deserialize)]
 struct FindMessagesParam {
-    since: Option<OffsetDateTime>,
+    since: Option<DateTime<Utc>>,
 }
 
 async fn find_messages(
@@ -132,7 +132,8 @@ async fn find_messages(
     Path(space_id): Path<i32>,
     param: Query<FindMessagesParam>,
 ) -> Result<Json<Vec<i32>>, ApiError> {
-    let msg_time = param.since.unwrap_or(OffsetDateTime::now_utc().saturating_sub(Duration::days(1)));
+    let msg_time = param.since
+        .unwrap_or(Utc::now() - Duration::days(1));
     let result = query_scalar!(
         "SELECT msg_id FROM messages WHERE space_id = $1 and msg_time >= $2",
         space_id,
