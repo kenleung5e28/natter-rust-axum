@@ -119,6 +119,8 @@ pub enum ApiError {
     NotFound,
     #[error("bad request: {0}")]
     BadRequest(String),
+    #[error("only support application/json content type")]
+    OnlySupportJsonContentType,
     #[error("server error: {0}")]
     ServerError(#[from] anyhow::Error),
     #[error("database error: {0}")]
@@ -130,6 +132,7 @@ impl IntoResponse for ApiError {
         let status_code = match &self {
             ApiError::NotFound => StatusCode::NOT_FOUND,
             ApiError::BadRequest(_) => StatusCode::BAD_REQUEST,
+            ApiError::OnlySupportJsonContentType => StatusCode::UNSUPPORTED_MEDIA_TYPE,
             ApiError::ServerError(_) | ApiError::DatabaseError(_) => {
                 StatusCode::INTERNAL_SERVER_ERROR
             }

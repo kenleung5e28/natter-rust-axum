@@ -11,6 +11,7 @@ use tower::ServiceBuilder;
 use tower_http::{set_header::SetResponseHeaderLayer, trace::TraceLayer};
 
 mod api;
+mod middlewares;
 mod routes;
 
 #[derive(clap::Parser)]
@@ -37,6 +38,9 @@ async fn main() -> anyhow::Result<()> {
         .layer(
             ServiceBuilder::new()
                 .layer(TraceLayer::new_for_http())
+                .layer(axum::middleware::from_fn(
+                    middlewares::accept_only_json_payload_in_post,
+                ))
                 .layer(SetResponseHeaderLayer::overriding(
                     X_CONTENT_TYPE_OPTIONS,
                     HeaderValue::from_static("nosniff"),
