@@ -1,6 +1,6 @@
-use crate::api::{ApiContext, ApiError, Json};
+use crate::api::{ApiContext, ApiError, Json, Query, IdPath};
 use axum::{
-    extract::{OriginalUri, Path, Query},
+    extract::{OriginalUri},
     http::StatusCode,
     routing::{get, post},
     Extension, Router,
@@ -66,8 +66,8 @@ struct PostMessageBody {
 
 async fn post_message(
     ctx: Extension<ApiContext>,
-    Path(space_id): Path<i32>,
-    uri: OriginalUri,
+    IdPath(space_id): IdPath<i32>,
+    OriginalUri(uri): OriginalUri,
     Json(payload): Json<PostMessagePayload>,
 ) -> Result<(StatusCode, Json<PostMessageBody>), ApiError> {
     let author = payload.author;
@@ -83,7 +83,7 @@ async fn post_message(
     Ok((
         StatusCode::CREATED,
         Json(PostMessageBody {
-            uri: format!("{}/{}", uri.0, msg_id),
+            uri: format!("{}/{}", uri, msg_id),
         })
     ))
 }
@@ -98,8 +98,8 @@ struct ReadMessageBody {
 
 async fn read_message(
     ctx: Extension<ApiContext>,
-    Path((space_id, msg_id)): Path<(i32, i32)>,
-    uri: OriginalUri,
+    IdPath((space_id, msg_id)): IdPath<(i32, i32)>,
+    OriginalUri(uri): OriginalUri,
 ) -> Result<Json<ReadMessageBody>, ApiError> {
     let result = query!(
         "SELECT space_id, msg_id, author, msg_time, msg_text FROM messages WHERE space_id = $1 AND msg_id = $2",
@@ -113,12 +113,9 @@ async fn read_message(
             author: record.author,
             message: record.msg_text,
             time: record.msg_time,
-            uri: format!("{}", uri.0),
+            uri: uri.to_string(),
         })),
-        None => Err(ApiError::NotFound(format!(
-            "message with ID {} not found in space with ID {}",
-            space_id, msg_id
-        ))),
+        None => Err(ApiError::NotFound),
     }
 }
 
@@ -129,8 +126,8 @@ struct FindMessagesParam {
 
 async fn find_messages(
     ctx: Extension<ApiContext>,
-    Path(space_id): Path<i32>,
-    param: Query<FindMessagesParam>,
+    IdPath(space_id): IdPath<i32>,
+    Query(param): Query<FindMessagesParam>,
 ) -> Result<Json<Vec<i32>>, ApiError> {
     let msg_time = param.since
         .unwrap_or(Utc::now() - Duration::days(1));

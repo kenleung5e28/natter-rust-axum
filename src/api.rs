@@ -2,7 +2,10 @@ use anyhow::anyhow;
 use axum::{
     async_trait,
     body::Body,
-    extract::{rejection::JsonRejection, FromRequest, RequestParts},
+    extract::{
+        rejection::{JsonRejection, PathRejection, QueryRejection},
+        FromRequest, RequestParts,
+    },
     http::StatusCode,
     response::{IntoResponse, Response},
 };
@@ -54,6 +57,57 @@ where
     }
 }
 
+pub struct Query<T>(pub T);
+
+#[async_trait]
+impl<T> FromRequest<Body> for Query<T>
+where
+    T: DeserializeOwned,
+{
+    type Rejection = ApiError;
+    async fn from_request(req: &mut RequestParts<Body>) -> Result<Self, Self::Rejection> {
+        match axum::extract::Query::<T>::from_request(req).await {
+            Ok(value) => Ok(Self(value.0)),
+            Err(rejection) => {
+                let e = match rejection {
+                    QueryRejection::FailedToDeserializeQueryString(_) => {
+                        ApiError::BadRequest("Invalid query parameter: {}".to_string())
+                    }
+                    err => ApiError::ServerError(anyhow!(
+                        "unknown error when parsing query parameter: {}",
+                        err
+                    )),
+                };
+                Err(e)
+            }
+        }
+    }
+}
+
+pub struct IdPath<T>(pub T);
+
+#[async_trait]
+impl<T> FromRequest<Body> for IdPath<T>
+where
+    T: Send + DeserializeOwned,
+{
+    type Rejection = ApiError;
+    async fn from_request(req: &mut RequestParts<Body>) -> Result<Self, Self::Rejection> {
+        match axum::extract::Path::<T>::from_request(req).await {
+            Ok(value) => Ok(Self(value.0)),
+            Err(rejection) => {
+                let e = match rejection {
+                    PathRejection::FailedToDeserializePathParams(_) => ApiError::NotFound,
+                    err => {
+                        ApiError::ServerError(anyhow!("unknown error when parsing path: {}", err))
+                    }
+                };
+                Err(e)
+            }
+        }
+    }
+}
+
 #[derive(Clone)]
 pub struct ApiContext {
     pub db: PgPool,
@@ -61,8 +115,8 @@ pub struct ApiContext {
 
 #[derive(thiserror::Error, Debug)]
 pub enum ApiError {
-    #[error("resource not found: {0}")]
-    NotFound(String),
+    #[error("resource not found")]
+    NotFound,
     #[error("bad request: {0}")]
     BadRequest(String),
     #[error("server error: {0}")]
@@ -74,7 +128,7 @@ pub enum ApiError {
 impl IntoResponse for ApiError {
     fn into_response(self) -> Response {
         let status_code = match &self {
-            ApiError::NotFound(_) => StatusCode::NOT_FOUND,
+            ApiError::NotFound => StatusCode::NOT_FOUND,
             ApiError::BadRequest(_) => StatusCode::BAD_REQUEST,
             ApiError::ServerError(_) | ApiError::DatabaseError(_) => {
                 StatusCode::INTERNAL_SERVER_ERROR
