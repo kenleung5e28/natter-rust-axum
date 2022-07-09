@@ -1,10 +1,14 @@
 use anyhow::Context;
 use axum::{Extension, Router};
 use clap::Parser;
+use http::header::{
+    HeaderValue, CACHE_CONTROL, CONTENT_SECURITY_POLICY, X_CONTENT_TYPE_OPTIONS, X_FRAME_OPTIONS,
+    X_XSS_PROTECTION,
+};
 use sqlx::postgres::PgPoolOptions;
 use std::net::SocketAddr;
 use tower::ServiceBuilder;
-use tower_http::trace::TraceLayer;
+use tower_http::{set_header::SetResponseHeaderLayer, trace::TraceLayer};
 
 mod api;
 mod routes;
@@ -33,6 +37,26 @@ async fn main() -> anyhow::Result<()> {
         .layer(
             ServiceBuilder::new()
                 .layer(TraceLayer::new_for_http())
+                .layer(SetResponseHeaderLayer::overriding(
+                    X_CONTENT_TYPE_OPTIONS,
+                    HeaderValue::from_static("nosniff"),
+                ))
+                .layer(SetResponseHeaderLayer::overriding(
+                    X_FRAME_OPTIONS,
+                    HeaderValue::from_static("DENY"),
+                ))
+                .layer(SetResponseHeaderLayer::overriding(
+                    X_XSS_PROTECTION,
+                    HeaderValue::from_static("0"),
+                ))
+                .layer(SetResponseHeaderLayer::overriding(
+                    CACHE_CONTROL,
+                    HeaderValue::from_static("no-store"),
+                ))
+                .layer(SetResponseHeaderLayer::overriding(
+                    CONTENT_SECURITY_POLICY,
+                    HeaderValue::from_static("default-src 'none'; frame-ancestors 'none'; sandbox"),
+                ))
                 .layer(Extension(api::ApiContext { db })),
         );
 

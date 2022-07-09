@@ -777,6 +777,7 @@ dependencies = [
  "chrono",
  "clap",
  "dotenv",
+ "http",
  "serde",
  "serde_json",
  "sqlx",
