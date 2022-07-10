@@ -1,12 +1,14 @@
 use anyhow::Context;
 use axum::{Extension, Router};
 use clap::Parser;
+use governor::{Quota, RateLimiter};
 use http::header::{
     HeaderValue, CACHE_CONTROL, CONTENT_SECURITY_POLICY, X_CONTENT_TYPE_OPTIONS, X_FRAME_OPTIONS,
     X_XSS_PROTECTION,
 };
+use nonzero_ext::nonzero;
 use sqlx::postgres::PgPoolOptions;
-use std::net::SocketAddr;
+use std::{net::SocketAddr, sync::Arc};
 use tower::ServiceBuilder;
 use tower_http::{set_header::SetResponseHeaderLayer, trace::TraceLayer};
 
@@ -33,6 +35,8 @@ async fn main() -> anyhow::Result<()> {
         .await
         .context("unable to connect to database")?;
 
+    let limiter = Arc::new(RateLimiter::direct(Quota::per_second(nonzero!(1u32))));
+
     let app = Router::new()
         .nest("/spaces", routes::space::router())
         .layer(
@@ -41,6 +45,7 @@ async fn main() -> anyhow::Result<()> {
                 .layer(axum::middleware::from_fn(
                     middlewares::accept_only_json_payload_in_post,
                 ))
+                .layer(axum::middleware::from_fn(middlewares::rate_limit_requests))
                 .layer(SetResponseHeaderLayer::overriding(
                     X_CONTENT_TYPE_OPTIONS,
                     HeaderValue::from_static("nosniff"),
@@ -61,7 +66,7 @@ async fn main() -> anyhow::Result<()> {
                     CONTENT_SECURITY_POLICY,
                     HeaderValue::from_static("default-src 'none'; frame-ancestors 'none'; sandbox"),
                 ))
-                .layer(Extension(api::ApiContext { db })),
+                .layer(Extension(api::ApiContext { db, limiter })),
         );
 
     let addr = SocketAddr::from(([127, 0, 0, 1], 8000));

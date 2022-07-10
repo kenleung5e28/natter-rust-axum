@@ -9,9 +9,12 @@ use axum::{
     http::StatusCode,
     response::{IntoResponse, Response},
 };
+use governor::{clock::DefaultClock, state::direct::NotKeyed, state::InMemoryState, RateLimiter};
+
 use serde::{de::DeserializeOwned, Serialize};
 use serde_json::json;
 use sqlx::PgPool;
+use std::sync::Arc;
 
 pub struct Json<T>(pub T);
 
@@ -111,6 +114,7 @@ where
 #[derive(Clone)]
 pub struct ApiContext {
     pub db: PgPool,
+    pub limiter: Arc<RateLimiter<NotKeyed, InMemoryState, DefaultClock>>,
 }
 
 #[derive(thiserror::Error, Debug)]
@@ -121,6 +125,8 @@ pub enum ApiError {
     BadRequest(String),
     #[error("only support application/json content type")]
     OnlySupportJsonContentType,
+    #[error("too many requests")]
+    TooManyRequests,
     #[error("server error: {0}")]
     ServerError(#[from] anyhow::Error),
     #[error("database error: {0}")]
@@ -133,6 +139,7 @@ impl IntoResponse for ApiError {
             ApiError::NotFound => StatusCode::NOT_FOUND,
             ApiError::BadRequest(_) => StatusCode::BAD_REQUEST,
             ApiError::OnlySupportJsonContentType => StatusCode::UNSUPPORTED_MEDIA_TYPE,
+            ApiError::TooManyRequests => StatusCode::TOO_MANY_REQUESTS,
             ApiError::ServerError(_) | ApiError::DatabaseError(_) => {
                 StatusCode::INTERNAL_SERVER_ERROR
             }
