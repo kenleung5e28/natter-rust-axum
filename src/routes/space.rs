@@ -8,6 +8,13 @@ use axum::{
 use serde::{Deserialize, Serialize};
 use sqlx::{query, query_scalar};
 use chrono::{DateTime, Duration, Utc};
+use validator::Validate;
+use lazy_static::lazy_static;
+use regex::Regex;
+
+lazy_static! {
+    static ref USER_REGEX: Regex = Regex::new("[a-zA-Z][a-zA-Z0-9]{1,29}").unwrap();
+}
 
 pub fn router() -> Router {
     Router::new().route("/", post(create_space)).nest(
@@ -18,9 +25,11 @@ pub fn router() -> Router {
     )
 }
 
-#[derive(Deserialize)]
+#[derive(Deserialize, Validate)]
 struct CreateSpacePayload {
+    #[validate(length(max = 255))]
     name: String,
+    #[validate(regex = "USER_REGEX")]
     owner: String,
 }
 
@@ -35,6 +44,14 @@ async fn create_space(
     uri: OriginalUri,
     Json(payload): Json<CreateSpacePayload>,
 ) -> Result<(StatusCode, Json<CreateSpaceBody>), ApiError> {
+    if let Err(e) = payload.validate() {
+        if e.errors().contains_key("owner") {
+            return Err(ApiError::BadRequest("invalid user name".to_string()));
+        }
+        if e.errors().contains_key("name") {
+            return Err(ApiError::BadRequest("name too long".to_string()));
+        }
+    }
     let name = payload.name;
     let owner = payload.owner;
     let space_id = query_scalar!(
@@ -53,9 +70,11 @@ async fn create_space(
     ))
 }
 
-#[derive(Deserialize)]
+#[derive(Deserialize, Validate)]
 struct PostMessagePayload {
+    #[validate(regex = "USER_REGEX")]
     author: String,
+    #[validate(length(max = 1024))]
     message: String,
 }
 
@@ -70,6 +89,14 @@ async fn post_message(
     OriginalUri(uri): OriginalUri,
     Json(payload): Json<PostMessagePayload>,
 ) -> Result<(StatusCode, Json<PostMessageBody>), ApiError> {
+    if let Err(e) = payload.validate() {
+        if e.errors().contains_key("author") {
+            return Err(ApiError::BadRequest("invalid user name".to_string()));
+        }
+        if e.errors().contains_key("message") {
+            return Err(ApiError::BadRequest("message too long".to_string()));
+        }
+    }
     let author = payload.author;
     let message = payload.message;
     let msg_id = query_scalar!(

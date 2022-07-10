@@ -25,3 +25,6 @@ dotenv = "0.15"
 anyhow = "1"
 thiserror = "1"
 chrono = { version = "0.4", features = ["serde"] }
+validator = { version = "0.15", features = ["derive"] }
+regex = "1"
+lazy_static = "1"
