@@ -117,7 +117,7 @@ pub struct ApiContext {
 pub enum ApiError {
     #[error("resource not found")]
     NotFound,
-    #[error("bad request: {0}")]
+    #[error("{0}")]
     BadRequest(String),
     #[error("only support application/json content type")]
     OnlySupportJsonContentType,
