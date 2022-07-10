@@ -42,6 +42,7 @@ async fn main() -> anyhow::Result<()> {
         .layer(
             ServiceBuilder::new()
                 .layer(TraceLayer::new_for_http())
+                .layer(Extension(api::ApiContext { db, limiter }))
                 .layer(axum::middleware::from_fn(
                     middlewares::accept_only_json_payload_in_post,
                 ))
@@ -65,8 +66,7 @@ async fn main() -> anyhow::Result<()> {
                 .layer(SetResponseHeaderLayer::overriding(
                     CONTENT_SECURITY_POLICY,
                     HeaderValue::from_static("default-src 'none'; frame-ancestors 'none'; sandbox"),
-                ))
-                .layer(Extension(api::ApiContext { db, limiter })),
+                )),
         );
 
     let addr = SocketAddr::from(([127, 0, 0, 1], 8000));
