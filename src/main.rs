@@ -16,12 +16,14 @@ mod api;
 mod middlewares;
 mod routes;
 
-const RATE_LIMIT: NonZeroU32 = nonzero!(2u32);
+const DEFAULT_RATE_LIMIT: NonZeroU32 = nonzero!(2u32);
 
-#[derive(clap::Parser)]
+#[derive(Debug, Parser)]
 struct Config {
     #[clap(long, env)]
     database_url: String,
+    #[clap(long, env, default_value_t = DEFAULT_RATE_LIMIT)]
+    rate_limit: NonZeroU32,
 }
 
 #[tokio::main]
@@ -37,7 +39,7 @@ async fn main() -> anyhow::Result<()> {
         .await
         .context("unable to connect to database")?;
 
-    let limiter = Arc::new(RateLimiter::direct(Quota::per_second(RATE_LIMIT)));
+    let limiter = Arc::new(RateLimiter::direct(Quota::per_second(DEFAULT_RATE_LIMIT)));
 
     let app = Router::new()
         .nest("/spaces", routes::space::router())
