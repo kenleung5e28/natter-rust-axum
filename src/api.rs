@@ -6,7 +6,7 @@ use axum::{
         rejection::{JsonRejection, PathRejection, QueryRejection},
         FromRequest, RequestParts,
     },
-    http::StatusCode,
+    http::{header::HeaderValue, header::RETRY_AFTER, StatusCode},
     response::{IntoResponse, Response},
 };
 use governor::{clock::DefaultClock, state::direct::NotKeyed, state::InMemoryState, RateLimiter};
@@ -144,12 +144,18 @@ impl IntoResponse for ApiError {
                 StatusCode::INTERNAL_SERVER_ERROR
             }
         };
-        (
+        let mut response = (
             status_code,
             Json(json!({
                 "message": &self.to_string(),
             })),
         )
-            .into_response()
+            .into_response();
+        if let ApiError::TooManyRequests = &self {
+            response
+                .headers_mut()
+                .insert(RETRY_AFTER, HeaderValue::from_static("2"));
+        }
+        response
     }
 }
