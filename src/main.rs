@@ -21,7 +21,7 @@ const DEFAULT_RATE_LIMIT: NonZeroU32 = nonzero!(2u32);
 #[derive(Debug, Parser)]
 struct Config {
     #[clap(long, env)]
-    database_url: String,
+    app_database_url: String,
     #[clap(long, env, default_value_t = DEFAULT_RATE_LIMIT)]
     rate_limit: NonZeroU32,
 }
@@ -35,7 +35,7 @@ async fn main() -> anyhow::Result<()> {
 
     let db = PgPoolOptions::new()
         .max_connections(100)
-        .connect(&config.database_url)
+        .connect(&config.app_database_url)
         .await
         .context("unable to connect to database")?;
 
