@@ -8,13 +8,15 @@ use http::header::{
 };
 use nonzero_ext::nonzero;
 use sqlx::postgres::PgPoolOptions;
-use std::{net::SocketAddr, sync::Arc};
+use std::{net::SocketAddr, num::NonZeroU32, sync::Arc};
 use tower::ServiceBuilder;
 use tower_http::{set_header::SetResponseHeaderLayer, trace::TraceLayer};
 
 mod api;
 mod middlewares;
 mod routes;
+
+const RATE_LIMIT: NonZeroU32 = nonzero!(2u32);
 
 #[derive(clap::Parser)]
 struct Config {
@@ -35,7 +37,7 @@ async fn main() -> anyhow::Result<()> {
         .await
         .context("unable to connect to database")?;
 
-    let limiter = Arc::new(RateLimiter::direct(Quota::per_second(nonzero!(1u32))));
+    let limiter = Arc::new(RateLimiter::direct(Quota::per_second(RATE_LIMIT)));
 
     let app = Router::new()
         .nest("/spaces", routes::space::router())
