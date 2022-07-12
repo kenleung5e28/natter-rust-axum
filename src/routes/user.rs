@@ -55,7 +55,13 @@ async fn register_user(
         hash
     )
     .execute(&ctx.db)
-    .await?;
+    .await
+    .map_err(|error| match error {
+        sqlx::Error::Database(db_err) if db_err.code().unwrap_or_default() == "23505" => {
+            ApiError::Conflict("user name already exists".to_string())
+        }
+        _ => ApiError::ServerError(anyhow!("failed to create user")),
+    })?;
     match result.rows_affected() {
         1 => {
             let uri = format!("{}/{}", uri, username);

@@ -19,6 +19,17 @@ use serde_json::json;
 use sqlx::PgPool;
 use std::sync::Arc;
 
+#[derive(Clone)]
+pub struct ApiContext {
+    pub db: PgPool,
+    pub limiter: Arc<RateLimiter<NotKeyed, InMemoryState, DefaultClock>>,
+}
+
+#[derive(Clone)]
+pub struct AuthContext {
+    pub subject: Option<String>,
+}
+
 pub struct Json<T>(pub T);
 
 #[async_trait]
@@ -132,18 +143,14 @@ where
     }
 }
 
-#[derive(Clone)]
-pub struct ApiContext {
-    pub db: PgPool,
-    pub limiter: Arc<RateLimiter<NotKeyed, InMemoryState, DefaultClock>>,
-}
-
 #[derive(thiserror::Error, Debug)]
 pub enum ApiError {
     #[error("resource not found")]
     NotFound,
     #[error("{0}")]
     BadRequest(String),
+    #[error("{0}")]
+    Conflict(String),
     #[error("only support application/json content type")]
     OnlySupportJsonContentType,
     #[error("too many requests")]
@@ -159,6 +166,7 @@ impl IntoResponse for ApiError {
         let status_code = match &self {
             ApiError::NotFound => StatusCode::NOT_FOUND,
             ApiError::BadRequest(_) => StatusCode::BAD_REQUEST,
+            ApiError::Conflict(_) => StatusCode::CONFLICT,
             ApiError::OnlySupportJsonContentType => StatusCode::UNSUPPORTED_MEDIA_TYPE,
             ApiError::TooManyRequests => StatusCode::TOO_MANY_REQUESTS,
             ApiError::ServerError(_) | ApiError::DatabaseError(_) => {

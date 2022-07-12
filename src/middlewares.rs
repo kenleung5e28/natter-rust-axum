@@ -1,12 +1,18 @@
-use crate::api::{ApiContext, ApiError};
+use crate::api::{ApiContext, ApiError, AuthContext};
+use crate::routes::USER_REGEX;
+use anyhow::anyhow;
 use axum::{
     extract::{FromRequest, RequestParts, TypedHeader},
-    headers::ContentType,
+    headers::{authorization, Authorization, ContentType},
     http::{Method, Request},
     middleware::Next,
     response::Response,
     Extension,
 };
+use scrypt::password_hash::PasswordVerifier;
+use scrypt::{password_hash::PasswordHash, Scrypt};
+use sqlx::query_scalar;
+use std::sync::{Arc, RwLock};
 
 pub async fn accept_only_json_payload_in_post<B>(
     req: Request<B>,
@@ -45,6 +51,50 @@ where
             }
         }
         Err(rejection) => return Err(ApiError::ServerError(rejection.into())),
+    }
+    let req = req_parts
+        .try_into_request()
+        .expect("body should not be extracted");
+    Ok(next.run(req).await)
+}
+
+pub async fn authenticate<B>(req: Request<B>, next: Next<B>) -> Result<Response, ApiError>
+where
+    B: Send,
+{
+    let mut req_parts = RequestParts::<B>::new(req);
+    if let Ok(TypedHeader(basic_auth)) =
+        TypedHeader::<Authorization<authorization::Basic>>::from_request(&mut req_parts).await
+    {
+        let username = basic_auth.username();
+        let password = basic_auth.password();
+        if !USER_REGEX.is_match(username) {
+            return Err(ApiError::BadRequest("invalid user name".to_string()));
+        }
+        let ctx = req_parts
+            .extensions()
+            .get::<ApiContext>()
+            .ok_or(ApiError::ServerError(anyhow!("failed to fetch context")))?;
+        let result = query_scalar!("SELECT pw_hash FROM users WHERE user_id = $1", username)
+            .fetch_optional(&ctx.db)
+            .await?;
+        if let Some(hash) = result {
+            if let Ok(parsed_hash) = PasswordHash::new(&hash) {
+                if Scrypt
+                    .verify_password(password.as_bytes(), &parsed_hash)
+                    .is_ok()
+                {
+                    match Extension::<Arc<RwLock<AuthContext>>>::from_request(&mut req_parts).await
+                    {
+                        Ok(auth_ctx) => {
+                            let mut c = auth_ctx.write().unwrap();
+                            c.subject = Some(username.to_string());
+                        }
+                        Err(rejection) => return Err(ApiError::ServerError(rejection.into())),
+                    }
+                }
+            }
+        }
     }
     let req = req_parts
         .try_into_request()
