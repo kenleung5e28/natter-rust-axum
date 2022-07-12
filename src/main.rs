@@ -43,6 +43,7 @@ async fn main() -> anyhow::Result<()> {
 
     let app = Router::new()
         .nest("/spaces", routes::space::router())
+        .nest("/users", routes::user::router())
         .layer(
             ServiceBuilder::new()
                 .layer(TraceLayer::new_for_http())

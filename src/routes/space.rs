@@ -9,12 +9,7 @@ use serde::{Deserialize, Serialize};
 use sqlx::{query, query_scalar};
 use chrono::{DateTime, Duration, Utc};
 use validator::Validate;
-use lazy_static::lazy_static;
-use regex::Regex;
-
-lazy_static! {
-    static ref USER_REGEX: Regex = Regex::new("[a-zA-Z][a-zA-Z0-9]{1,29}").unwrap();
-}
+use crate::routes::USER_REGEX;
 
 pub fn router() -> Router {
     Router::new().route("/", post(create_space)).nest(
@@ -41,7 +36,7 @@ struct CreateSpaceBody {
 
 async fn create_space(
     ctx: Extension<ApiContext>,
-    uri: OriginalUri,
+    OriginalUri(uri): OriginalUri,
     Json(payload): Json<CreateSpacePayload>,
 ) -> Result<(StatusCode, Json<CreateSpaceBody>), ApiError> {
     if let Err(e) = payload.validate() {
@@ -65,7 +60,7 @@ async fn create_space(
         StatusCode::CREATED,
         Json(CreateSpaceBody {
             name,
-            uri: format!("{}/{}", uri.0, space_id),
+            uri: format!("{}/{}", uri, space_id),
         }),
     ))
 }
