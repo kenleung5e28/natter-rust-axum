@@ -1,7 +1,7 @@
-use crate::api::{ApiContext, ApiError, Json};
+use crate::api::{ApiContext, ApiError, CreatedJson, Json};
 use crate::routes::USER_REGEX;
 use anyhow::{anyhow, Context};
-use axum::{http::StatusCode, routing::post, Extension, Router};
+use axum::{extract::OriginalUri, routing::post, Extension, Router};
 use scrypt::password_hash::PasswordHasher;
 use scrypt::{
     password_hash::{rand_core::OsRng, SaltString},
@@ -30,8 +30,9 @@ struct RegisterUserBody {
 
 async fn register_user(
     ctx: Extension<ApiContext>,
+    OriginalUri(uri): OriginalUri,
     Json(payload): Json<RegisterUserPayload>,
-) -> Result<(StatusCode, Json<RegisterUserBody>), ApiError> {
+) -> Result<CreatedJson<RegisterUserBody>, ApiError> {
     if let Err(e) = payload.validate() {
         if e.errors().contains_key("username") {
             return Err(ApiError::BadRequest("invalid user name".to_string()));
@@ -57,8 +58,9 @@ async fn register_user(
     .await?;
     match result.rows_affected() {
         1 => {
+            let uri = format!("{}/{}", uri, username);
             let body = RegisterUserBody { username };
-            Ok((StatusCode::CREATED, Json(body)))
+            Ok(CreatedJson(uri, body))
         }
         _ => Err(ApiError::ServerError(anyhow!("failed to create user"))),
     }

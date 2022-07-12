@@ -1,7 +1,6 @@
-use crate::api::{ApiContext, ApiError, Json, Query, IdPath};
+use crate::api::{ApiContext, ApiError, CreatedJson, Json, Query, IdPath};
 use axum::{
     extract::{OriginalUri},
-    http::StatusCode,
     routing::{get, post},
     Extension, Router,
 };
@@ -38,7 +37,7 @@ async fn create_space(
     ctx: Extension<ApiContext>,
     OriginalUri(uri): OriginalUri,
     Json(payload): Json<CreateSpacePayload>,
-) -> Result<(StatusCode, Json<CreateSpaceBody>), ApiError> {
+) -> Result<CreatedJson<CreateSpaceBody>, ApiError> {
     if let Err(e) = payload.validate() {
         if e.errors().contains_key("owner") {
             return Err(ApiError::BadRequest("invalid user name".to_string()));
@@ -56,13 +55,13 @@ async fn create_space(
     )
     .fetch_one(&ctx.db)
     .await?;
-    Ok((
-        StatusCode::CREATED,
-        Json(CreateSpaceBody {
+    let uri = format!("{}/{}", uri, space_id);
+    Ok(
+        CreatedJson(uri.clone(), CreateSpaceBody {
             name,
-            uri: format!("{}/{}", uri, space_id),
+            uri,
         }),
-    ))
+    )
 }
 
 #[derive(Deserialize, Validate)]
@@ -83,7 +82,7 @@ async fn post_message(
     IdPath(space_id): IdPath<i32>,
     OriginalUri(uri): OriginalUri,
     Json(payload): Json<PostMessagePayload>,
-) -> Result<(StatusCode, Json<PostMessageBody>), ApiError> {
+) -> Result<CreatedJson<PostMessageBody>, ApiError> {
     if let Err(e) = payload.validate() {
         if e.errors().contains_key("author") {
             return Err(ApiError::BadRequest("invalid user name".to_string()));
@@ -102,12 +101,12 @@ async fn post_message(
     )
     .fetch_one(&ctx.db)
     .await?;
-    Ok((
-        StatusCode::CREATED,
-        Json(PostMessageBody {
-            uri: format!("{}/{}", uri, msg_id),
+    let uri = format!("{}/{}", uri, msg_id);
+    Ok(
+        CreatedJson(uri.clone(), PostMessageBody {
+            uri,
         })
-    ))
+    )
 }
 
 #[derive(Serialize)]
