@@ -1,4 +1,4 @@
-use crate::api::{ApiContext, ApiError, CreatedJson, Json, Query, IdPath};
+use crate::api::{ApiContext, ApiError, CreatedJson, Json, Query, IdPath, AuthContext};
 use axum::{
     extract::{OriginalUri},
     routing::{get, post},
@@ -9,6 +9,7 @@ use sqlx::{query, query_scalar};
 use chrono::{DateTime, Duration, Utc};
 use validator::Validate;
 use crate::routes::USER_REGEX;
+use std::sync::{Arc, RwLock};
 
 pub fn router() -> Router {
     Router::new().route("/", post(create_space)).nest(
@@ -35,6 +36,7 @@ struct CreateSpaceBody {
 
 async fn create_space(
     ctx: Extension<ApiContext>,
+    auth_ctx: Extension<Arc<RwLock<AuthContext>>>,
     OriginalUri(uri): OriginalUri,
     Json(payload): Json<CreateSpacePayload>,
 ) -> Result<CreatedJson<CreateSpaceBody>, ApiError> {
@@ -48,6 +50,13 @@ async fn create_space(
     }
     let name = payload.name;
     let owner = payload.owner;
+    let is_owner_match = match &auth_ctx.read().unwrap().subject {
+        None => false,
+        Some(subject) => *subject == owner,
+    };
+    if !is_owner_match {
+        return Err(ApiError::BadRequest("owner must match authenticated user".to_string()));
+    }
     let space_id = query_scalar!(
         "INSERT INTO spaces (name, owner) VALUES ($1, $2) RETURNING space_id",
         name,
@@ -79,6 +88,7 @@ struct PostMessageBody {
 
 async fn post_message(
     ctx: Extension<ApiContext>,
+    auth_ctx: Extension<Arc<RwLock<AuthContext>>>,
     IdPath(space_id): IdPath<i32>,
     OriginalUri(uri): OriginalUri,
     Json(payload): Json<PostMessagePayload>,
@@ -93,6 +103,13 @@ async fn post_message(
     }
     let author = payload.author;
     let message = payload.message;
+    let is_author_match = match &auth_ctx.read().unwrap().subject {
+        None => false,
+        Some(subject) => *subject == author,
+    };
+    if !is_author_match {
+        return Err(ApiError::BadRequest("author must match authenticated user".to_string()));
+    }
     let msg_id = query_scalar!(
         "INSERT INTO messages (space_id, author, msg_text) VALUES ($1, $2, $3) RETURNING msg_id",
         space_id,
