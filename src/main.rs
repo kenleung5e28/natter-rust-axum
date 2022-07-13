@@ -8,11 +8,7 @@ use http::header::{
 };
 use nonzero_ext::nonzero;
 use sqlx::postgres::PgPoolOptions;
-use std::{
-    net::SocketAddr,
-    num::NonZeroU32,
-    sync::{Arc, RwLock},
-};
+use std::{net::SocketAddr, num::NonZeroU32, sync::Arc};
 use tower::ServiceBuilder;
 use tower_http::{set_header::SetResponseHeaderLayer, trace::TraceLayer};
 
@@ -45,8 +41,6 @@ async fn main() -> anyhow::Result<()> {
 
     let limiter = Arc::new(RateLimiter::direct(Quota::per_second(DEFAULT_RATE_LIMIT)));
 
-    let auth_context = Arc::new(RwLock::new(api::AuthContext { subject: None }));
-
     let app = Router::new()
         .nest(
             "/spaces",
@@ -57,7 +51,6 @@ async fn main() -> anyhow::Result<()> {
             ServiceBuilder::new()
                 .layer(TraceLayer::new_for_http())
                 .layer(Extension(api::ApiContext { db, limiter }))
-                .layer(Extension(auth_context))
                 .layer(SetResponseHeaderLayer::overriding(
                     X_CONTENT_TYPE_OPTIONS,
                     HeaderValue::from_static("nosniff"),

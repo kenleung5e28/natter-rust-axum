@@ -12,7 +12,6 @@ use axum::{
 use scrypt::password_hash::PasswordVerifier;
 use scrypt::{password_hash::PasswordHash, Scrypt};
 use sqlx::query_scalar;
-use std::sync::{Arc, RwLock};
 
 pub async fn accept_only_json_payload_in_post<B>(
     req: Request<B>,
@@ -62,6 +61,7 @@ pub async fn authenticate<B>(req: Request<B>, next: Next<B>) -> Result<Response,
 where
     B: Send,
 {
+    let mut auth_ctx = AuthContext { subject: None };
     let mut req_parts = RequestParts::<B>::new(req);
     if let Ok(TypedHeader(basic_auth)) =
         TypedHeader::<Authorization<authorization::Basic>>::from_request(&mut req_parts).await
@@ -84,18 +84,14 @@ where
                     .verify_password(password.as_bytes(), &parsed_hash)
                     .is_ok()
                 {
-                    match Extension::<Arc<RwLock<AuthContext>>>::from_request(&mut req_parts).await
-                    {
-                        Ok(auth_ctx) => {
-                            let mut c = auth_ctx.write().unwrap();
-                            c.subject = Some(username.to_string());
-                        }
-                        Err(rejection) => return Err(ApiError::ServerError(rejection.into())),
-                    }
+                    auth_ctx = AuthContext {
+                        subject: Some(username.to_string()),
+                    };
                 }
             }
         }
     }
+    req_parts.extensions_mut().insert(auth_ctx);
     let req = req_parts
         .try_into_request()
         .expect("body should not be extracted");

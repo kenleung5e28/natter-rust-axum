@@ -9,7 +9,6 @@ use sqlx::{query, query_scalar};
 use chrono::{DateTime, Duration, Utc};
 use validator::Validate;
 use crate::routes::USER_REGEX;
-use std::sync::{Arc, RwLock};
 
 pub fn router() -> Router {
     Router::new().route("/", post(create_space)).nest(
@@ -36,7 +35,7 @@ struct CreateSpaceBody {
 
 async fn create_space(
     ctx: Extension<ApiContext>,
-    auth_ctx: Extension<Arc<RwLock<AuthContext>>>,
+    auth_ctx: Extension<AuthContext>,
     OriginalUri(uri): OriginalUri,
     Json(payload): Json<CreateSpacePayload>,
 ) -> Result<CreatedJson<CreateSpaceBody>, ApiError> {
@@ -50,7 +49,7 @@ async fn create_space(
     }
     let name = payload.name;
     let owner = payload.owner;
-    let is_owner_match = match &auth_ctx.read().unwrap().subject {
+    let is_owner_match = match &auth_ctx.subject {
         None => false,
         Some(subject) => *subject == owner,
     };
@@ -88,7 +87,7 @@ struct PostMessageBody {
 
 async fn post_message(
     ctx: Extension<ApiContext>,
-    auth_ctx: Extension<Arc<RwLock<AuthContext>>>,
+    auth_ctx: Extension<AuthContext>,
     IdPath(space_id): IdPath<i32>,
     OriginalUri(uri): OriginalUri,
     Json(payload): Json<PostMessagePayload>,
@@ -103,7 +102,7 @@ async fn post_message(
     }
     let author = payload.author;
     let message = payload.message;
-    let is_author_match = match &auth_ctx.read().unwrap().subject {
+    let is_author_match = match &auth_ctx.subject {
         None => false,
         Some(subject) => *subject == author,
     };
