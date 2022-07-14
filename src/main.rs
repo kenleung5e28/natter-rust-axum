@@ -1,5 +1,6 @@
 use anyhow::Context;
 use axum::{Extension, Router};
+use axum_server::tls_rustls::RustlsConfig;
 use clap::Parser;
 use governor::{Quota, RateLimiter};
 use http::header::{
@@ -8,7 +9,7 @@ use http::header::{
 };
 use nonzero_ext::nonzero;
 use sqlx::postgres::PgPoolOptions;
-use std::{net::SocketAddr, num::NonZeroU32, sync::Arc};
+use std::{net::SocketAddr, num::NonZeroU32, path::PathBuf, sync::Arc};
 use tower::ServiceBuilder;
 use tower_http::{set_header::SetResponseHeaderLayer, trace::TraceLayer};
 
@@ -33,6 +34,14 @@ async fn main() -> anyhow::Result<()> {
     let config = Config::parse();
 
     tracing_subscriber::fmt::init();
+
+    let cert_path = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("self-signed-certs");
+    let tls_config = RustlsConfig::from_pem_file(
+        cert_path.join("localhost.pem"),
+        cert_path.join("localhost-key.pem"),
+    )
+    .await
+    .context("failed to configure TLS certificates")?;
 
     let db = PgPoolOptions::new()
         .max_connections(100)
@@ -80,7 +89,7 @@ async fn main() -> anyhow::Result<()> {
 
     let addr = SocketAddr::from(([127, 0, 0, 1], 8000));
     tracing::debug!("listening on {}", addr);
-    axum::Server::bind(&addr)
+    axum_server::bind_rustls(addr, tls_config)
         .serve(app.into_make_service())
         .await
         .context("error running HTTP server")
