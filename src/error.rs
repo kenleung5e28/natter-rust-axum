@@ -17,9 +17,9 @@ pub enum ApiError {
     OnlySupportJsonContentType,
     #[error("too many requests")]
     TooManyRequests,
-    #[error("server error: {0}")]
+    #[error("internal server error")]
     ServerError(#[from] anyhow::Error),
-    #[error("database error: {0}")]
+    #[error("database error")]
     DatabaseError(#[from] sqlx::Error),
 }
 
