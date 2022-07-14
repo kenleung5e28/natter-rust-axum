@@ -1,10 +1,3 @@
-DROP ROLE IF EXISTS natter_api_user;
-DROP INDEX IF EXISTS msg_timestamp_idx;
-DROP INDEX IF EXISTS space_name_idx;
-DROP TABLE IF EXISTS spaces;
-DROP TABLE IF EXISTS messages;
-DROP TABLE IF EXISTS users;
-
 CREATE TABLE spaces (
     space_id SERIAL PRIMARY KEY,
     name VARCHAR(255) NOT NULL,
@@ -20,7 +13,7 @@ CREATE TABLE messages (
 CREATE INDEX msg_timestamp_idx ON messages(msg_time);
 CREATE UNIQUE INDEX space_name_idx ON spaces(name);
 
-CREATE ROLE natter_api_user PASSWORD 'password';
+CREATE ROLE natter_api_user WITH LOGIN PASSWORD 'password';
 GRANT SELECT, INSERT ON spaces, messages TO natter_api_user;
 
 CREATE TABLE users (
@@ -28,3 +21,13 @@ CREATE TABLE users (
     pw_hash VARCHAR(255) NOT NULL
 );
 GRANT SELECT, INSERT ON users TO natter_api_user;
+
+CREATE TABLE audit_log (
+    audit_id SERIAL NULL,
+    method VARCHAR(10) NOT NULL,
+    path VARCHAR(100) NOT NULL,
+    user_id VARCHAR(30) NULL,
+    status INT NULL,
+    audit_time TIMESTAMPTZ NOT NULL
+);
+GRANT SELECT, INSERT ON audit_log TO natter_api_user;
