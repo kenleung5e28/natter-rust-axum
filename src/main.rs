@@ -13,6 +13,7 @@ use tower::ServiceBuilder;
 use tower_http::{set_header::SetResponseHeaderLayer, trace::TraceLayer};
 
 mod api;
+mod error;
 mod middlewares;
 mod routes;
 

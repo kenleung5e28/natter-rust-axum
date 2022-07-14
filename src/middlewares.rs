@@ -1,4 +1,5 @@
-use crate::api::{ApiContext, ApiError, AuthContext};
+use crate::api::{ApiContext, AuthContext};
+use crate::error::ApiError;
 use crate::routes::USER_REGEX;
 use anyhow::anyhow;
 use axum::{

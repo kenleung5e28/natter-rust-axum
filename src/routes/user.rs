@@ -1,4 +1,5 @@
-use crate::api::{ApiContext, ApiError, CreatedJson, Json};
+use crate::api::{ApiContext, CreatedJson, Json};
+use crate::error::ApiError;
 use crate::routes::USER_REGEX;
 use anyhow::{anyhow, Context};
 use axum::{extract::OriginalUri, routing::post, Extension, Router};

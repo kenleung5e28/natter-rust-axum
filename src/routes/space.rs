@@ -1,4 +1,5 @@
-use crate::api::{ApiContext, ApiError, CreatedJson, Json, Query, IdPath, AuthContext};
+use crate::api::{ApiContext, CreatedJson, Json, Query, IdPath, AuthContext};
+use crate::error::ApiError;
 use axum::{
     extract::{OriginalUri},
     routing::{get, post},
