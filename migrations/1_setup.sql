@@ -1,3 +1,12 @@
+DROP ROLE IF EXISTS natter_api_user;
+DROP INDEX IF EXISTS msg_timestamp_idx;
+DROP INDEX IF EXISTS space_name_idx;
+DROP TABLE IF EXISTS spaces;
+DROP TABLE IF EXISTS messages;
+DROP TABLE IF EXISTS users;
+DROP TABLE IF EXISTS audit_log;
+DROP SEQUENCE IF EXISTS audit_id_seq;
+
 CREATE TABLE spaces (
     space_id SERIAL PRIMARY KEY,
     name VARCHAR(255) NOT NULL,
@@ -23,11 +32,12 @@ CREATE TABLE users (
 GRANT SELECT, INSERT ON users TO natter_api_user;
 
 CREATE TABLE audit_log (
-    audit_id SERIAL NULL,
+    audit_id INT NULL,
     method VARCHAR(10) NOT NULL,
     path VARCHAR(100) NOT NULL,
     user_id VARCHAR(30) NULL,
     status INT NULL,
     audit_time TIMESTAMPTZ NOT NULL
 );
+CREATE SEQUENCE audit_id_seq;
 GRANT SELECT, INSERT ON audit_log TO natter_api_user;
