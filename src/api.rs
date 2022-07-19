@@ -42,14 +42,12 @@ where
                     JsonRejection::MissingJsonContentType(_) => ApiError::BadRequest(
                         "request missing the application/json content-type".to_string(),
                     ),
-                    JsonRejection::JsonSyntaxError(err) => ApiError::BadRequest(format!(
-                        "JSON payload has syntax error: {}",
-                        err.to_string()
-                    )),
-                    JsonRejection::JsonDataError(err) => ApiError::BadRequest(format!(
-                        "invalid request JSON payload: {}",
-                        err.to_string()
-                    )),
+                    JsonRejection::JsonSyntaxError(err) => {
+                        ApiError::BadRequest(format!("JSON payload has syntax error: {}", err))
+                    }
+                    JsonRejection::JsonDataError(err) => {
+                        ApiError::BadRequest(format!("invalid request JSON payload: {}", err))
+                    }
                     err => ApiError::ServerError(anyhow!(
                         "unknown error when parsing JSON payload: {}",
                         err

@@ -46,7 +46,7 @@ where
     let mut req_parts = RequestParts::<B>::new(req);
     match Extension::<ApiContext>::from_request(&mut req_parts).await {
         Ok(ctx) => {
-            if let Err(_) = ctx.limiter.check() {
+            if ctx.limiter.check().is_err() {
                 return Err(ApiError::TooManyRequests);
             }
         }
@@ -75,7 +75,7 @@ where
         let ctx = req_parts
             .extensions()
             .get::<ApiContext>()
-            .ok_or(ApiError::ServerError(anyhow!("failed to fetch context")))?;
+            .ok_or_else(|| ApiError::ServerError(anyhow!("failed to fetch context")))?;
         let result = query_scalar!("SELECT pw_hash FROM users WHERE user_id = $1", username)
             .fetch_optional(&ctx.db)
             .await?;
