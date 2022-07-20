@@ -32,7 +32,7 @@ CREATE TABLE users (
 GRANT SELECT, INSERT ON users TO natter_api_user;
 
 CREATE TABLE audit_log (
-    audit_id INT NULL,
+    audit_id BIGINT NULL,
     method VARCHAR(10) NOT NULL,
     path VARCHAR(100) NOT NULL,
     user_id VARCHAR(30) NULL,
