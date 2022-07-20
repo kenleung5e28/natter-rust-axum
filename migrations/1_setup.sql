@@ -41,3 +41,4 @@ CREATE TABLE audit_log (
 );
 CREATE SEQUENCE audit_id_seq;
 GRANT SELECT, INSERT ON audit_log TO natter_api_user;
+GRANT USAGE ON audit_id_seq TO natter_api_user;
