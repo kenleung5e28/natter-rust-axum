@@ -14,7 +14,6 @@ CREATE INDEX msg_timestamp_idx ON messages(msg_time);
 CREATE UNIQUE INDEX space_name_idx ON spaces(name);
 
 CREATE ROLE natter_api_user WITH LOGIN PASSWORD 'password';
-GRANT USAGE, SELECT ON ALL SEQUENCES IN SCHEMA public TO natter_api_user;
 GRANT SELECT, INSERT, UPDATE ON spaces, messages TO natter_api_user;
 
 CREATE TABLE users (
@@ -33,3 +32,8 @@ CREATE TABLE audit_log (
 );
 CREATE SEQUENCE audit_id_seq;
 GRANT SELECT, INSERT ON audit_log TO natter_api_user;
+
+
+
+
+GRANT USAGE, SELECT ON ALL SEQUENCES IN SCHEMA public TO natter_api_user;
