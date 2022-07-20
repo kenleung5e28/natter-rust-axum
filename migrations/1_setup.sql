@@ -37,7 +37,7 @@ CREATE TABLE audit_log (
     path VARCHAR(100) NOT NULL,
     user_id VARCHAR(30) NULL,
     status INT NULL,
-    audit_time TIMESTAMPTZ NOT NULL
+    audit_time TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
 CREATE SEQUENCE audit_id_seq;
 GRANT SELECT, INSERT ON audit_log TO natter_api_user;
