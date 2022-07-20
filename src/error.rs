@@ -31,7 +31,12 @@ impl IntoResponse for ApiError {
             ApiError::Conflict(_) => StatusCode::CONFLICT,
             ApiError::OnlySupportJsonContentType => StatusCode::UNSUPPORTED_MEDIA_TYPE,
             ApiError::TooManyRequests => StatusCode::TOO_MANY_REQUESTS,
-            ApiError::ServerError(_) | ApiError::DatabaseError(_) => {
+            ApiError::DatabaseError(e) => {
+                dbg!(e);
+                StatusCode::INTERNAL_SERVER_ERROR
+            }
+            ApiError::ServerError(e) => {
+                dbg!(e);
                 StatusCode::INTERNAL_SERVER_ERROR
             }
         };
