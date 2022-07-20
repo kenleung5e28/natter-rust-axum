@@ -26,6 +26,11 @@ pub struct AuthContext {
     pub subject: Option<String>,
 }
 
+#[derive(Clone)]
+pub struct AuditContext {
+    pub audit_id: i64,
+}
+
 pub struct Json<T>(pub T);
 
 #[async_trait]

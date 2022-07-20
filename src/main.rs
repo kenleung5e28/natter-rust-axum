@@ -84,7 +84,8 @@ async fn main() -> anyhow::Result<()> {
                 .layer(axum::middleware::from_fn(
                     middlewares::accept_only_json_payload_in_post,
                 ))
-                .layer(axum::middleware::from_fn(middlewares::rate_limit_requests)),
+                .layer(axum::middleware::from_fn(middlewares::rate_limit_requests))
+                .layer(axum::middleware::from_fn(middlewares::audit_request)),
         );
 
     let addr = SocketAddr::from(([127, 0, 0, 1], 8000));

@@ -12,7 +12,7 @@ use axum::{
 };
 use scrypt::password_hash::PasswordVerifier;
 use scrypt::{password_hash::PasswordHash, Scrypt};
-use sqlx::query_scalar;
+use sqlx::{query, query_scalar};
 
 pub async fn accept_only_json_payload_in_post<B>(
     req: Request<B>,
@@ -97,4 +97,57 @@ where
         .try_into_request()
         .expect("body should not be extracted");
     Ok(next.run(req).await)
+}
+
+pub async fn audit_request<B>(req: Request<B>, next: Next<B>) -> Result<Response, ApiError>
+where
+    B: Send,
+{
+    let mut req_parts = RequestParts::<B>::new(req);
+    let ctx = Extension::<ApiContext>::from_request(&mut req_parts)
+        .await
+        .map_err(|rejection| ApiError::ServerError(rejection.into()))?;
+    let mut transaction = ctx.db.begin().await?;
+    let audit_id = query_scalar!("SELECT nextval('audit_id_seq')")
+        .fetch_one(&mut transaction)
+        .await?;
+    if audit_id.is_none() {
+        transaction.rollback().await?;
+        return Err(ApiError::ServerError(anyhow!(
+            "failed to obtain next audit id"
+        )));
+    }
+    let audit_id = audit_id.unwrap();
+    let user_id = Extension::<AuthContext>::from_request(&mut req_parts)
+        .await
+        .ok()
+        .and_then(|ctx| ctx.subject.as_deref().map(|s| s.to_string()));
+    let request_method = String::from(req_parts.method().as_str());
+    let request_path = String::from(req_parts.uri().path());
+    query!(
+        "INSERT INTO audit_log(audit_id, method, path, user_id) VALUES ($1, $2, $3, $4)",
+        audit_id,
+        request_method,
+        request_path,
+        user_id
+    )
+    .execute(&mut transaction)
+    .await?;
+    let req = req_parts
+        .try_into_request()
+        .expect("body should not be extracted");
+    transaction.commit().await?;
+    let res = next.run(req).await;
+    let response_status = i32::from(res.status().as_u16());
+    query!(
+        "INSERT INTO audit_log(audit_id, method, path, status, user_id) VALUES ($1, $2, $3, $4, $5)",
+        audit_id,
+        request_method,
+        request_path,
+        response_status,
+        user_id
+    )
+    .execute(&ctx.db)
+    .await?;
+    Ok(res)
 }
