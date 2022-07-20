@@ -1,12 +1,3 @@
-DROP ROLE IF EXISTS natter_api_user;
-DROP INDEX IF EXISTS msg_timestamp_idx;
-DROP INDEX IF EXISTS space_name_idx;
-DROP TABLE IF EXISTS spaces;
-DROP TABLE IF EXISTS messages;
-DROP TABLE IF EXISTS users;
-DROP TABLE IF EXISTS audit_log;
-DROP SEQUENCE IF EXISTS audit_id_seq;
-
 CREATE TABLE spaces (
     space_id SERIAL PRIMARY KEY,
     name VARCHAR(255) NOT NULL,
@@ -23,7 +14,8 @@ CREATE INDEX msg_timestamp_idx ON messages(msg_time);
 CREATE UNIQUE INDEX space_name_idx ON spaces(name);
 
 CREATE ROLE natter_api_user WITH LOGIN PASSWORD 'password';
-GRANT SELECT, INSERT ON spaces, messages TO natter_api_user;
+GRANT USAGE, SELECT ON ALL SEQUENCES IN SCHEMA public TO natter_api_user;
+GRANT SELECT, INSERT, UPDATE ON spaces, messages TO natter_api_user;
 
 CREATE TABLE users (
     user_id VARCHAR(30) PRIMARY KEY,
@@ -41,4 +33,3 @@ CREATE TABLE audit_log (
 );
 CREATE SEQUENCE audit_id_seq;
 GRANT SELECT, INSERT ON audit_log TO natter_api_user;
-GRANT USAGE ON audit_id_seq TO natter_api_user;

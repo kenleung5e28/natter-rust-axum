@@ -1,0 +1,8 @@
+DROP INDEX IF EXISTS msg_timestamp_idx;
+DROP INDEX IF EXISTS space_name_idx;
+DROP TABLE IF EXISTS messages;
+DROP TABLE IF EXISTS spaces;
+DROP TABLE IF EXISTS users;
+DROP TABLE IF EXISTS audit_log;
+DROP SEQUENCE IF EXISTS audit_id_seq;
+DROP ROLE IF EXISTS natter_api_user;
