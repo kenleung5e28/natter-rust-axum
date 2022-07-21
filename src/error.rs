@@ -1,6 +1,6 @@
 use axum::response::{IntoResponse, Json, Response};
 use http::{
-    header::{HeaderValue, RETRY_AFTER},
+    header::{HeaderValue, RETRY_AFTER, WWW_AUTHENTICATE},
     StatusCode,
 };
 use serde_json::json;
@@ -17,6 +17,8 @@ pub enum ApiError {
     OnlySupportJsonContentType,
     #[error("too many requests")]
     TooManyRequests,
+    #[error("authentication required")]
+    AuthenticationRequired,
     #[error("internal server error")]
     ServerError(#[from] anyhow::Error),
     #[error("database error")]
@@ -31,6 +33,7 @@ impl IntoResponse for ApiError {
             ApiError::Conflict(_) => StatusCode::CONFLICT,
             ApiError::OnlySupportJsonContentType => StatusCode::UNSUPPORTED_MEDIA_TYPE,
             ApiError::TooManyRequests => StatusCode::TOO_MANY_REQUESTS,
+            ApiError::AuthenticationRequired => StatusCode::UNAUTHORIZED,
             ApiError::DatabaseError(e) => {
                 dbg!(e);
                 StatusCode::INTERNAL_SERVER_ERROR
@@ -51,6 +54,12 @@ impl IntoResponse for ApiError {
             response
                 .headers_mut()
                 .insert(RETRY_AFTER, HeaderValue::from_static("2"));
+        }
+        if let ApiError::AuthenticationRequired = &self {
+            response.headers_mut().insert(
+                WWW_AUTHENTICATE,
+                HeaderValue::from_static("Basic realm=\"/\", charset=\"UTF-8\""),
+            );
         }
         response
     }
