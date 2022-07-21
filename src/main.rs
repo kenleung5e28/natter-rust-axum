@@ -54,7 +54,13 @@ async fn main() -> anyhow::Result<()> {
     let app = Router::new()
         .nest(
             "/spaces",
-            routes::space::router().layer(axum::middleware::from_fn(middlewares::authenticate)),
+            routes::space::router().layer(
+                ServiceBuilder::new()
+                    .layer(axum::middleware::from_fn(middlewares::authenticate))
+                    .layer(axum::middleware::from_fn(
+                        middlewares::require_authentication,
+                    )),
+            ),
         )
         .nest("/users", routes::user::router())
         .layer(

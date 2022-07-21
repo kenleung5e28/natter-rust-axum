@@ -151,3 +151,20 @@ where
     .await?;
     Ok(res)
 }
+
+pub async fn require_authentication<B>(req: Request<B>, next: Next<B>) -> Result<Response, ApiError>
+where
+    B: Send,
+{
+    let mut req_parts = RequestParts::<B>::new(req);
+    let auth_ctx = Extension::<AuthContext>::from_request(&mut req_parts)
+        .await
+        .map_err(|rejection| ApiError::ServerError(rejection.into()))?;
+    if auth_ctx.subject.is_none() {
+        return Err(ApiError::AuthenticationRequired);
+    }
+    let req = req_parts
+        .try_into_request()
+        .expect("body should not be extracted");
+    Ok(next.run(req).await)
+}
