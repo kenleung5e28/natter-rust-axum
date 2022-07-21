@@ -1,5 +1,6 @@
 DROP INDEX IF EXISTS msg_timestamp_idx;
 DROP INDEX IF EXISTS space_name_idx;
+DROP TABLE IF EXISTS permissions;
 DROP TABLE IF EXISTS messages;
 DROP TABLE IF EXISTS spaces;
 DROP TABLE IF EXISTS users;

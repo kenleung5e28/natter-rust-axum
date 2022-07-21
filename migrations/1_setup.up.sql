@@ -13,14 +13,10 @@ CREATE TABLE messages (
 CREATE INDEX msg_timestamp_idx ON messages(msg_time);
 CREATE UNIQUE INDEX space_name_idx ON spaces(name);
 
-CREATE ROLE natter_api_user WITH LOGIN PASSWORD 'password';
-GRANT SELECT, INSERT, UPDATE ON spaces, messages TO natter_api_user;
-
 CREATE TABLE users (
     user_id VARCHAR(30) PRIMARY KEY,
     pw_hash VARCHAR(255) NOT NULL
 );
-GRANT SELECT, INSERT ON users TO natter_api_user;
 
 CREATE TABLE audit_log (
     audit_id BIGINT NULL,
@@ -31,9 +27,17 @@ CREATE TABLE audit_log (
     audit_time TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
 CREATE SEQUENCE audit_id_seq;
+
+CREATE TABLE permissions(
+    space_id INT NOT NULL REFERENCES spaces(space_id),
+    user_id VARCHAR(30) NOT NULL REFERENCES users(user_id),
+    perms VARCHAR(3) NOT NULL,
+    PRIMARY KEY (space_id, user_id)
+);
+
+CREATE ROLE natter_api_user WITH LOGIN PASSWORD 'password';
+GRANT SELECT, INSERT, UPDATE ON spaces, messages TO natter_api_user;
+GRANT SELECT, INSERT ON users TO natter_api_user;
 GRANT SELECT, INSERT ON audit_log TO natter_api_user;
-
-
-
-
+GRANT SELECT, INSERT ON permissions to natter_api_user;
 GRANT USAGE, SELECT ON ALL SEQUENCES IN SCHEMA public TO natter_api_user;
