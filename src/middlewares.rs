@@ -168,3 +168,15 @@ where
         .expect("body should not be extracted");
     Ok(next.run(req).await)
 }
+
+pub fn require_permission<B>(
+    method: Method,
+    permission: &str,
+    req: Request<B>,
+    next: Next<B>,
+) -> Result<Response, ApiError>
+where
+    B: Send,
+{
+    todo!();
+}
