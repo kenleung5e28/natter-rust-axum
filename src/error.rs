@@ -19,6 +19,8 @@ pub enum ApiError {
     TooManyRequests,
     #[error("authentication required")]
     AuthenticationRequired,
+    #[error("access forbidden")]
+    Forbidden,
     #[error("internal server error")]
     ServerError(#[from] anyhow::Error),
     #[error("database error")]
@@ -34,6 +36,7 @@ impl IntoResponse for ApiError {
             ApiError::OnlySupportJsonContentType => StatusCode::UNSUPPORTED_MEDIA_TYPE,
             ApiError::TooManyRequests => StatusCode::TOO_MANY_REQUESTS,
             ApiError::AuthenticationRequired => StatusCode::UNAUTHORIZED,
+            ApiError::Forbidden => StatusCode::FORBIDDEN,
             ApiError::DatabaseError(e) => {
                 dbg!(e);
                 StatusCode::INTERNAL_SERVER_ERROR

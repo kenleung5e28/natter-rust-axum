@@ -1,9 +1,11 @@
-use crate::api::{ApiContext, AuthContext};
+use std::collections::HashMap;
+
+use crate::api::{ApiContext, AuthContext, Permission};
 use crate::error::ApiError;
 use crate::routes::USER_REGEX;
 use anyhow::anyhow;
 use axum::{
-    extract::{FromRequest, RequestParts, TypedHeader},
+    extract::{FromRequest, Query, RequestParts, TypedHeader},
     headers::{authorization, Authorization, ContentType},
     http::{Method, Request},
     middleware::Next,
@@ -169,14 +171,48 @@ where
     Ok(next.run(req).await)
 }
 
-pub fn require_permission<B>(
-    method: Method,
-    permission: &str,
-    req: Request<B>,
-    next: Next<B>,
-) -> Result<Response, ApiError>
+pub async fn require_permission<B>(req: Request<B>, next: Next<B>) -> Result<Response, ApiError>
 where
     B: Send,
 {
-    todo!();
+    let mut req_parts = RequestParts::<B>::new(req);
+    let query_params = Extension::<Query<HashMap<String, String>>>::from_request(&mut req_parts)
+        .await
+        .map_err(|rejection| ApiError::ServerError(rejection.into()))?;
+    let space_id = match query_params.get("spaceId") {
+        None => Err(ApiError::BadRequest(
+            "missing query param 'spaceId'".to_string(),
+        )),
+        Some(value) => value
+            .parse::<i32>()
+            .map_err(|_| ApiError::BadRequest("wrong format in query param 'spaceId'".to_string())),
+    }?;
+    let auth_ctx = Extension::<AuthContext>::from_request(&mut req_parts)
+        .await
+        .map_err(|rejection| ApiError::ServerError(rejection.into()))?;
+    if auth_ctx.subject.is_none() {
+        return Err(ApiError::AuthenticationRequired);
+    }
+    let Extension(permission_required) = Extension::<Permission>::from_request(&mut req_parts)
+        .await
+        .map_err(|rejection| ApiError::ServerError(rejection.into()))?;
+    let user_id = auth_ctx.subject.as_ref().unwrap();
+    let ctx = Extension::<ApiContext>::from_request(&mut req_parts)
+        .await
+        .map_err(|rejection| ApiError::ServerError(rejection.into()))?;
+    let user_permission = query_scalar!(
+        "SELECT perms FROM permissions WHERE space_id = $1 AND user_id = $2",
+        space_id,
+        user_id
+    )
+    .fetch_optional(&ctx.db)
+    .await?
+    .map_or(Permission::default(), |s| Permission::from(s.as_str()));
+    if !permission_required.is_allowed(&user_permission) {
+        return Err(ApiError::Forbidden);
+    }
+    let req = req_parts
+        .try_into_request()
+        .expect("body should not be extracted");
+    Ok(next.run(req).await)
 }

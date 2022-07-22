@@ -31,6 +31,38 @@ pub struct AuditContext {
     pub audit_id: i64,
 }
 
+#[derive(Clone, Default)]
+pub struct Permission {
+    pub read: bool,
+    pub write: bool,
+    pub delete: bool,
+}
+
+impl Permission {
+    pub fn is_allowed(&self, user_permission: &Self) -> bool {
+        if self.read && !user_permission.read {
+            return false;
+        }
+        if self.write && !user_permission.write {
+            return false;
+        }
+        if self.delete && !user_permission.delete {
+            return false;
+        }
+        true
+    }
+}
+
+impl From<&str> for Permission {
+    fn from(s: &str) -> Self {
+        Permission {
+            read: s.contains('r'),
+            write: s.contains('w'),
+            delete: s.contains('d'),
+        }
+    }
+}
+
 pub struct Json<T>(pub T);
 
 #[async_trait]
