@@ -57,13 +57,16 @@ async fn create_space(
     if !is_owner_match {
         return Err(ApiError::BadRequest("owner must match authenticated user".to_string()));
     }
+    let mut transaction = ctx.db.begin().await?;
     let space_id = query_scalar!(
         "INSERT INTO spaces (name, owner) VALUES ($1, $2) RETURNING space_id",
         name,
         owner
     )
-    .fetch_one(&ctx.db)
+    .fetch_one(&mut transaction)
     .await?;
+    query!("INSERT INTO permissions (space_id, user_id, perms) VALUES ($1, $2, $3)", space_id, owner, "rwd").execute(&mut transaction).await?;
+    transaction.commit().await?;
     let uri = format!("{}/{}", uri, space_id);
     Ok(
         CreatedJson(uri.clone(), CreateSpaceBody {
