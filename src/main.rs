@@ -52,7 +52,10 @@ async fn main() -> anyhow::Result<()> {
     let limiter = Arc::new(RateLimiter::direct(Quota::per_second(DEFAULT_RATE_LIMIT)));
 
     let app = Router::new()
-        .nest("/spaces", routes::space::router())
+        .nest(
+            "/spaces",
+            routes::space::router().merge(routes::moderator::router()),
+        )
         .nest("/users", routes::user::router())
         .layer(
             ServiceBuilder::new()

@@ -1,3 +1,4 @@
+pub mod moderator;
 pub mod space;
 pub mod user;
 
