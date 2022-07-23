@@ -1,11 +1,9 @@
-use std::collections::HashMap;
-
 use crate::api::{ApiContext, AuthContext, Permission};
 use crate::error::ApiError;
 use crate::routes::USER_REGEX;
 use anyhow::anyhow;
 use axum::{
-    extract::{FromRequest, Query, RequestParts, TypedHeader},
+    extract::{FromRequest, Path, RequestParts, TypedHeader},
     headers::{authorization, Authorization, ContentType},
     http::{Method, Request},
     middleware::Next,
@@ -171,22 +169,21 @@ where
     Ok(next.run(req).await)
 }
 
+#[derive(serde::Deserialize)]
+#[serde(rename_all(deserialize = "snake_case"))]
+struct RequirePermissionPath {
+    space_id: i32,
+}
+
 pub async fn require_permission<B>(req: Request<B>, next: Next<B>) -> Result<Response, ApiError>
 where
     B: Send,
 {
     let mut req_parts = RequestParts::<B>::new(req);
-    let query_params = Extension::<Query<HashMap<String, String>>>::from_request(&mut req_parts)
+    let path_params = Path::<RequirePermissionPath>::from_request(&mut req_parts)
         .await
         .map_err(|rejection| ApiError::ServerError(rejection.into()))?;
-    let space_id = match query_params.get("spaceId") {
-        None => Err(ApiError::BadRequest(
-            "missing query param 'spaceId'".to_string(),
-        )),
-        Some(value) => value
-            .parse::<i32>()
-            .map_err(|_| ApiError::BadRequest("wrong format in query param 'spaceId'".to_string())),
-    }?;
+    let space_id = path_params.space_id;
     let auth_ctx = Extension::<AuthContext>::from_request(&mut req_parts)
         .await
         .map_err(|rejection| ApiError::ServerError(rejection.into()))?;

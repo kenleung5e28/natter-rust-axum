@@ -1,17 +1,27 @@
-use crate::api::{ApiContext, CreatedJson, Json, Query, IdPath, AuthContext};
+use crate::api::{ApiContext, CreatedJson, Json, Query, IdPath, AuthContext, Permission};
 use crate::error::ApiError;
 use axum::{
     extract::{OriginalUri},
     routing::{get, post},
     Extension, Router,
+    middleware::from_fn,
+    handler::Handler,
 };
 use serde::{Deserialize, Serialize};
 use sqlx::{query, query_scalar};
 use chrono::{DateTime, Duration, Utc};
 use validator::Validate;
 use crate::routes::USER_REGEX;
+use crate::middlewares::{require_permission, require_authentication};
 
 pub fn router() -> Router {
+    let create_space = create_space.layer(from_fn(require_authentication));
+    let post_message = post_message.layer(from_fn(require_permission))
+    .layer(Extension(Permission { read: false, write: true, delete: false, }));
+    let find_messages = find_messages.layer(from_fn(require_permission))
+    .layer(Extension(Permission { read: true, write: false, delete: false, }));
+    let read_message = read_message.layer(from_fn(require_permission))
+    .layer(Extension(Permission { read: true, write: false, delete: false, }));
     Router::new().route("/", post(create_space)).nest(
         "/:space_id/messages",
         Router::new()

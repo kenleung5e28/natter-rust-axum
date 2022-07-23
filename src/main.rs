@@ -1,5 +1,5 @@
 use anyhow::Context;
-use axum::{Extension, Router};
+use axum::{middleware::from_fn, Extension, Router};
 use axum_server::tls_rustls::RustlsConfig;
 use clap::Parser;
 use governor::{Quota, RateLimiter};
@@ -52,16 +52,7 @@ async fn main() -> anyhow::Result<()> {
     let limiter = Arc::new(RateLimiter::direct(Quota::per_second(DEFAULT_RATE_LIMIT)));
 
     let app = Router::new()
-        .nest(
-            "/spaces",
-            routes::space::router().layer(
-                ServiceBuilder::new()
-                    .layer(axum::middleware::from_fn(middlewares::authenticate))
-                    .layer(axum::middleware::from_fn(
-                        middlewares::require_authentication,
-                    )),
-            ),
-        )
+        .nest("/spaces", routes::space::router())
         .nest("/users", routes::user::router())
         .layer(
             ServiceBuilder::new()
@@ -87,11 +78,10 @@ async fn main() -> anyhow::Result<()> {
                     CONTENT_SECURITY_POLICY,
                     HeaderValue::from_static("default-src 'none'; frame-ancestors 'none'; sandbox"),
                 ))
-                .layer(axum::middleware::from_fn(
-                    middlewares::accept_only_json_payload_in_post,
-                ))
-                .layer(axum::middleware::from_fn(middlewares::rate_limit_requests))
-                .layer(axum::middleware::from_fn(middlewares::audit_request)),
+                .layer(from_fn(middlewares::accept_only_json_payload_in_post))
+                .layer(from_fn(middlewares::rate_limit_requests))
+                .layer(from_fn(middlewares::authenticate))
+                .layer(from_fn(middlewares::audit_request)),
         );
 
     let addr = SocketAddr::from(([127, 0, 0, 1], 8000));
