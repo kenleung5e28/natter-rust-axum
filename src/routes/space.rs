@@ -1,7 +1,7 @@
 use crate::api::{ApiContext, CreatedJson, Json, Query, Path, AuthContext, Permission};
 use crate::error::ApiError;
 use axum::{
-    extract::{OriginalUri},
+    extract::OriginalUri,
     routing::{get, post},
     Extension, Router,
     middleware::from_fn,
