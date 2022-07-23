@@ -150,10 +150,10 @@ where
     }
 }
 
-pub struct IdPath<T>(pub T);
+pub struct Path<T>(pub T);
 
 #[async_trait]
-impl<T> FromRequest<Body> for IdPath<T>
+impl<T> FromRequest<Body> for Path<T>
 where
     T: Send + DeserializeOwned,
 {

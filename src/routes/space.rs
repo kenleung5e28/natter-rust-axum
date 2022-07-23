@@ -1,4 +1,4 @@
-use crate::api::{ApiContext, CreatedJson, Json, Query, IdPath, AuthContext, Permission};
+use crate::api::{ApiContext, CreatedJson, Json, Query, Path, AuthContext, Permission};
 use crate::error::ApiError;
 use axum::{
     extract::{OriginalUri},
@@ -102,7 +102,7 @@ struct PostMessageBody {
 async fn post_message(
     ctx: Extension<ApiContext>,
     auth_ctx: Extension<AuthContext>,
-    IdPath(space_id): IdPath<i32>,
+    Path(space_id): Path<i32>,
     OriginalUri(uri): OriginalUri,
     Json(payload): Json<PostMessagePayload>,
 ) -> Result<CreatedJson<PostMessageBody>, ApiError> {
@@ -149,7 +149,7 @@ struct ReadMessageBody {
 
 async fn read_message(
     ctx: Extension<ApiContext>,
-    IdPath((space_id, msg_id)): IdPath<(i32, i32)>,
+    Path((space_id, msg_id)): Path<(i32, i32)>,
     OriginalUri(uri): OriginalUri,
 ) -> Result<Json<ReadMessageBody>, ApiError> {
     let result = query!(
@@ -177,7 +177,7 @@ struct FindMessagesParam {
 
 async fn find_messages(
     ctx: Extension<ApiContext>,
-    IdPath(space_id): IdPath<i32>,
+    Path(space_id): Path<i32>,
     Query(param): Query<FindMessagesParam>,
 ) -> Result<Json<Vec<i32>>, ApiError> {
     let msg_time = param.since
