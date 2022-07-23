@@ -171,10 +171,18 @@ where
     Ok(next.run(req).await)
 }
 
-pub async fn require_permission<B>(req: Request<B>, next: Next<B>) -> Result<Response, ApiError>
+pub async fn require_permission<B>(
+    req: Request<B>,
+    next: Next<B>,
+    method: Method,
+    permission_required: Permission,
+) -> Result<Response, ApiError>
 where
     B: Send,
 {
+    if *req.method() != method {
+        return Ok(next.run(req).await);
+    }
     let mut req_parts = RequestParts::<B>::new(req);
     let query_params = Extension::<Query<HashMap<String, String>>>::from_request(&mut req_parts)
         .await
@@ -193,9 +201,6 @@ where
     if auth_ctx.subject.is_none() {
         return Err(ApiError::AuthenticationRequired);
     }
-    let Extension(permission_required) = Extension::<Permission>::from_request(&mut req_parts)
-        .await
-        .map_err(|rejection| ApiError::ServerError(rejection.into()))?;
     let user_id = auth_ctx.subject.as_ref().unwrap();
     let ctx = Extension::<ApiContext>::from_request(&mut req_parts)
         .await
