@@ -36,7 +36,8 @@ CREATE TABLE permissions(
 );
 
 CREATE ROLE natter_api_user WITH LOGIN PASSWORD 'password';
-GRANT SELECT, INSERT, UPDATE ON spaces, messages TO natter_api_user;
+GRANT SELECT, INSERT, UPDATE ON spaces TO natter_api_user;
+GRANT SELECT, INSERT, UPDATE, DELETE ON messages TO natter_api_user;
 GRANT SELECT, INSERT ON users TO natter_api_user;
 GRANT SELECT, INSERT ON audit_log TO natter_api_user;
 GRANT SELECT, INSERT ON permissions to natter_api_user;
